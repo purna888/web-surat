@@ -78,10 +78,11 @@ class SuratMasukController extends Controller
     
 
     // Tampilkan form edit surat masuk
-    public function edit(SuratMasuk $suratMasuk)
-    {
-        return view('surat-masuk.edit', compact('suratMasuk'));  // Menampilkan form edit surat masuk
+    public function edit($id) {
+        $suratMasuk = SuratMasuk::findOrFail($id);
+        return view('surat-masuk.edit', compact('suratMasuk'));
     }
+    
 
     public function download(SuratMasuk $suratMasuk)
     {
@@ -99,34 +100,41 @@ class SuratMasukController extends Controller
     
 
     // Update data surat masuk
-    public function update(Request $request, SuratMasuk $suratMasuk)
+    public function update(Request $request, $id)
     {
-        // Validasi inputan dari pengguna
-        $validated = $request->validate([
-            'no_surat' => 'required|unique:surat_masuk,no_surat,' . $suratMasuk->id,  // Validasi untuk update no_surat
+        $request->validate([
+            'no_surat' => 'required',
             'tanggal_surat' => 'required|date',
             'tanggal_terima' => 'required|date',
-            'pengirim' => 'required|string',
-            'perihal' => 'required|string',
-            'file' => 'nullable|file|mimes:pdf,doc,docx|max:2048',  // Validasi file
+            'pengirim' => 'required',
+            'perihal' => 'required',
+            'file' => 'nullable|file|mimes:pdf,doc,docx|max:2048'
         ]);
-
-        // Proses upload file jika ada
+    
+        $suratMasuk = SuratMasuk::findOrFail($id);
+    
+        $suratMasuk->no_surat = $request->no_surat;
+        $suratMasuk->tanggal_surat = $request->tanggal_surat;
+        $suratMasuk->tanggal_terima = $request->tanggal_terima;
+        $suratMasuk->pengirim = $request->pengirim;
+        $suratMasuk->perihal = $request->perihal;
+    
         if ($request->hasFile('file')) {
             // Hapus file lama jika ada
-            if ($suratMasuk->file) {
-                Storage::disk('public')->delete($suratMasuk->file);
+            if ($suratMasuk->file && Storage::exists($suratMasuk->file)) {
+                Storage::delete($suratMasuk->file);
             }
-
-            // Menyimpan file baru
-            $validated['file'] = $request->file('file')->store('surat-masuk_files', 'public');
+    
+            // Simpan file baru
+            $filePath = $request->file('file')->store('surat-masuk');
+            $suratMasuk->file = $filePath;
         }
-
-        // Update data surat masuk
-        $suratMasuk->update($validated);
-
-        return redirect()->route('surat-masuk.index')->with('success', 'Surat masuk berhasil diperbarui.');
+    
+        $suratMasuk->save();
+    
+        return redirect()->route('surat-masuk.index')->with('success', 'Surat Masuk berhasil diupdate');
     }
+    
 
     // Hapus data surat masuk
     public function destroy($id)
